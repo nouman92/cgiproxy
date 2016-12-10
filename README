@@ -1,0 +1,1950 @@
+========================================================================
+
+CGIProxy 2.1.17  (released June 11, 2016)
+
+HTTP/FTP Proxy in a CGI Script
+
+(c) 1996, 1998-2016 by James Marshall, james@jmarshall.com
+All rights reserved.  Free for non-commercial use; commercial use
+requires a license.
+
+For the latest, see http://www.jmarshall.com/tools/cgiproxy/
+
+========================================================================
+
+This README contains:
+
+  1. INTRODUCTION
+  2. LEGAL DISCLAIMER
+  3. INSTALLATION
+  4. USAGE
+  5. HELP IMPROVE THIS PROXY BY TELLING ME
+  6. LIMITS AND BUGS
+
+  7. OPTIONS
+  8. CHANGES
+
+------------------------------------------------------------------------
+1. INTRODUCTION:
+
+This CGI (or other) script acts as an HTTP, HTTPS, or FTP proxy.  Through it,
+you can retrieve any resource that is accessible from the server this runs on.
+This is useful when your own access is limited, but you can reach a server
+that in turn can reach others that you can't.  By default, no user info
+(except browser type) is sent to the target server, so you can set up your
+own anonymous proxy.
+
+Whenever an HTML resource is retrieved, it's modified so that all links
+in it point back through the same proxy, including images, form submissions,
+and everything else.  JavaScript and Flash apps are similarly "proxified".
+Once you're using the proxy, you can browse normally and (almost) forget
+it's there.
+
+CGIProxy can run in four ways: as a CGI script, as a mod_perl script, as a
+FastCGI script, or with its own embedded secure HTTP server.  Configurable
+options include text-only proxying (to save bandwidth), selective cookie and
+script removal, simple ad filtering, access restriction by server, custom
+encoding of target URLs and cookies, and more-- there are more than 70 options
+so far (see the complete list of configuration options below).  It requires
+Perl 5.6.1 or later.
+
+The original seed for this was a program I wrote for Rich Morin's
+article in the June 1996 issue of Unix Review, online at
+http://www.cfcl.com/tin/P/199606.shtml .
+
+IMPORTANT NOTE ABOUT ANONYMOUS BROWSING:
+CGIProxy was originally made for indirect browsing more than anonymity,
+but since people are using it for anonymity, I've tried to make it as
+anonymous as possible.  Suggestions welcome.  For best anonymity, browse
+with JavaScript turned off, or configure CGIProxy to remove script
+content (see the options below).   Also, be aware that Flash or other
+executable content may be able to reveal you to a server, though CGIProxy
+tries to prevent that too.  Please tell me if you find any way that
+anonymity can be compromised when using CGIProxy.
+
+------------------------------------------------------------------------
+2. LEGAL DISCLAIMER:
+
+Censorship is a controversial subject, and some governments and companies
+have rules about what information you should have access to.  If you use
+my software to bypass rules that have been imposed on you, you assume all
+legal risks and responsibilities involved.  I'm providing the software as
+a demonstration and teaching tool, and for when legitimate access is
+needed to non-accessible servers.  I won't encourage you to break any
+rules, because I would get in trouble if I did.  I can't prevent you from
+using this software in illegitimate ways, but I believe the value of it in
+its many uses is far too great to let a few miscreants ruin it for
+everybody.
+
+------------------------------------------------------------------------
+3. INSTALLATION:
+
+This section is much longer than it used to be, and more complete.  You won't
+need most of it.  The installation itself is easier and more flexible than it
+used to be.  Parts of it require running commands from the command line (the
+"shell"), but we'll tell you exactly which commands you need to run. 
+
+You need to install CGIProxy on a machine that's outside of any censoring
+firewall, but that is still accessible to people behind the firewall. You do
+NOT need to install anything on the browsing machine(s). Once CGIProxy is
+installed on a machine, any number of people can use it, if they know its URL.
+
+Subsections within this INSTALLATION section include:
+
+    PREREQUISITES
+    CONFIGURING CGIPROXY
+        USING A DATABASE 
+    INSTALLING THE CGIPROXY SCRIPT
+        AS A CGI SCRIPT
+        UNDER MOD_PERL
+        AS A FASTCGI SCRIPT
+        USING CGIPROXY'S OWN EMBEDDED SERVER 
+    AFTER YOU INSTALL
+    TROUBLESHOOTING
+        IF YOU DON'T KNOW PERL, BUT NEED TO CONFIGURE CGIPROXY 
+
+
+PREREQUISITES:
+
+CGIProxy requires the following on the machine where it is installed:
+
+    - the Perl language, which is already on all Unix and Mac OS X machines
+    - secure (!) Web server software, such as Apache or nginx (unless
+      installing CGIProxy using its own embedded server)
+    - OpenSSL, which is already on most Unix and Mac machines.  To see if you
+      already have OpenSSL, run "openssl version" from the command line to see
+      either the installed version or an error message.
+
+Please note that all of these packages are completely unaffiliated with
+CGIProxy, and may have their own terms of use.
+
+
+CONFIGURING CGIPROXY:
+
+First, unpack the distribution (the file ending in ".tar.gz").  On Unix and
+Mac, you can do this with the command "tar xzvf cgiproxy.*.tar.gz".  In it are
+two files, nph-proxy.cgi and README .  nph-proxy.cgi is the program you'll be
+configuring and installing. That's it-- just one file.
+
+Almost all configuration is optional, and the defaults should be fine for most
+situations.  However, if you need to set an HTTP proxy, or there is anything
+else unusual about your network or server, then see the section OPTIONS RELATED
+TO YOUR SERVER/NETWORK ENVIRONMENT.  In particular, set $PROXY_DIR and $RUN_AS_USER .
+If you don't have root access on your server, then set $LOCAL_LIB_DIR .
+
+Configure CGIProxy by editing nph-proxy.cgi in a text editor.  The
+configuration section starts after some initial comments and code, near line
+338.  Each configuration variable has a block of text above it fully describing
+how to use it; there's a summary table of all options online.  If you don't
+know Perl, there's some help at the end of this INSTALLATION section.
+
+Depending on how you install CGIProxy, there may be other configuration needed.
+This will be detailed for each of the installation methods below.
+
+You can rename nph-proxy.cgi if you like. However, if you're installing it as
+a CGI script or under mod_perl, be sure the name still starts with "nph-".
+(You can change that requirement for mod_perl, by reconfiguring mod_perl.)
+These instructions will still refer to "nph-proxy.cgi", but you should substitute
+the actual name of your file.
+
+
+USING A DATABASE:
+
+As of CGIProxy 2.1.15, the default database driver is SQLite, which means you
+don't need to run a database engine (like MariaDB/MySQL or Oracle) to use a
+database-- SQLite simply uses a file for its database, which for CGIProxy is in
+the directory "cgiproxy/sqlite/" under your home directory, with the filename
+"cgiproxy". (This location and filename can be configured if needed.) Using a
+database is optional, but it will get rid of any "Bad Request" errors you see
+when you have too many cookies for your Web server to handle.
+
+You'll need to purge old data from your database periodically. In Unix or Mac,
+do this with a "cron job". In Windows, use the Task Scheduler. The command to
+purge the database is "nph-proxy.cgi purge-db".
+
+All database configuration in CGIProxy is described in the section DATABASE
+CONFIGURATION OPTIONS.
+
+You'll need to purge old data from your database periodically. In Unix or Mac,
+do this with a "cron job". In Windows, use the Task Scheduler. The command to
+purge the database is "nph-proxy.cgi purge-db".
+
+In Unix or Mac, you can edit your list of cron jobs (one per line) with the
+command "crontab -e". To purge the database at the top of every hour, add the
+line:
+
+    0 * * * * /path/to/script/nph-proxy.cgi purge-db 
+
+To purge the database every night at 2:00 am, add the line:
+
+    0 2 * * * /path/to/script/nph-proxy.cgi purge-db 
+
+(Replace "/path/to/script/" with the full path to nph-proxy.cgi .) 
+
+
+INSTALLING THE CGIPROXY SCRIPT:
+
+There are four ways to run CGIProxy:
+
+    - as a CGI script (the easiest, but runs the slowest)
+    - under mod_perl (requires Apache with the mod_perl extension)
+    - as a FastCGI script
+    - using CGIProxy's own embedded server (doesn't need Web server software)
+
+Read the section below corresponding to the way you want to run it.
+
+
+AS A CGI SCRIPT:
+
+This is the easiest way to install CGIProxy, but it will run the slowest of
+all four installation methods. However, if not too many people are using it,
+the speed may be OK. To install CGIProxy:
+
+    1) Copy the file nph-proxy.cgi onto your Web server somewhere, but not at
+       the top Web directory, or else it will be easily discovered.
+    2) Change the file's permissions to be executable.  On Unix and Mac, you
+       can do this with the command "chmod +x nph-proxy.cgi"; there are other
+       ways.
+    3) In the directory where you copied nph-proxy.cgi, run the command
+       "./nph-proxy.cgi init" (or in Windows, "perl nph-proxy.cgi init").
+       This installs the optional Perl modules to e.g. let you visit secure
+       sites.  If you can't run this as root/administrator, it will still
+       work, but see the instructions displayed at the end after all the
+       scrolling text (which you can ignore).  If it asks you any questions,
+       you can just hit <return>.
+    4) If you're using a database, add the cron job to purge old data-- see
+       the section USING A DATABASE above.
+    5) Optionally, protect the proxy with a password; see your Web server
+       documentation for how to do this.  With Apache, you can use the
+       .htaccess file.
+
+
+UNDER MOD_PERL:
+
+If you have mod_perl available on your Apache server (ask your webmaster), then
+with it CGIProxy can run many times faster than as a CGI script.  The
+installation is similar to that of a CGI script, but requires some extra Apache
+configuration if mod_perl hasn't already been set up.  To install CGIProxy
+under mod_perl, do the same thing as installing it as a CGI script, above.
+Depending on how mod_perl is configured, you may need to rename the script file
+to nph-proxy.pl, or something else.
+
+CONFIGURING MOD_PERL:
+
+If you're configuring your own mod_perl, you can use this block in your
+httpd.conf to make all scripts ending in ".pl" use mod_perl:
+
+    <Files *.pl>
+	Options +ExecCGI
+	SetHandler perl-script
+	PerlResponseHandler ModPerl::Registry
+	PerlOptions +ParseHeaders
+	PerlSendHeader Off
+	<Files nph-*>
+	    PerlOptions -ParseHeaders
+	</Files>
+    </Files>
+    	
+
+If you know how to configure Apache, you can tweak this as desired.
+
+
+AS A FASTCGI SCRIPT:
+
+FastCGI scripts are similar to CGI scripts in some ways, but run faster than
+CGI scripts.  FastCGI can be used with most Web servers, including those that
+don't support CGI scripts, such as nginx.  A FastCGI script runs as multiple
+managed processes on a server, and is called by the Web server process.
+
+To install CGIProxy as a FastCGI script:
+
+    1) Set $SECRET_PATH, and possibly $FCGI_SOCKET .  Other configurable
+       parameters are listed in FASTCGI CONFIGURATION OPTIONS.
+    2) Configure your Web server to use the same two values you set in the
+       previous step (see the next sections for examples).
+    3) Copy nph-proxy.cgi to your server machine.  Do not put it under your
+       Web directory.
+    4) Change the file's permissions to be executable.  On Unix and Mac, you
+       can do this with the command "chmod +x nph-proxy.cgi"; there are other
+       ways. 
+    5) In the directory where you copied nph-proxy.cgi, run the command
+       "./nph-proxy.cgi init" (or in Windows, "perl nph-proxy.cgi init").
+       This installs the optional Perl modules to e.g. let you visit secure
+       sites.  If you can't run this as root/administrator, it will still
+       work, but see the instructions displayed at the end after all the
+       scrolling text (which you can ignore).  If it asks you any questions,
+       you can just hit <return>.
+    6) If you're using a database, add the cron job to purge old data-- see
+       the section USING A DATABASE above.
+
+To start the FastCGI process, run the command "./nph-proxy.cgi start-fcgi"
+(or in Windows, "perl nph-proxy.cgi start-fcgi") from the directory where you
+uploaded the script.  It may take a while the first time you run it, as it will
+install some required Perl modules if you don't already have them; you can
+ignore the scrolling text.  If it asks you any questions, you can just hit
+<return>.
+
+To stop the FastCGI process, run the command "killall nph-proxy.cgi".
+
+CONFIGURING NGINX WITH FASTCGI:
+
+Include a section like this in your nginx.conf, within the secure server section:
+
+    location /secret/ {
+        include        fastcgi.conf;
+        fastcgi_pass   unix:/tmp/cgiproxy.fcgi.socket;
+    }
+
+Replace "/secret/" with your setting of $SECRET_PATH, and replace
+"/tmp/cgiproxy.fcgi.socket" with your setting of $FCGI_SOCKET .
+
+CONFIGURING APACHE WITH FASTCGI:
+
+Include a line like this in your httpd.conf:
+
+    FastCgiExternalServer /var/www/html/secret -socket /tmp/cgiproxy.fcgi.socket
+
+Replace "/var/www/html/secret" with your setting of $SECRET_PATH appended to
+your DocumentRoot, and replace "/tmp/cgiproxy.fcgi.socket" with your setting
+of $FCGI_SOCKET .
+
+
+USING CGIPROXY'S OWN EMBEDDED SERVER:
+
+You can run CGIProxy without a Web server, using its embedded server.  This
+method will run faster than as a CGI script, but probably slower than under
+mod_perl or as a FastCGI script.
+
+To run any secure server, including CGIProxy's embedded server, you need a
+"certificate" and a "private key", also known as a "key pair".  (A certificate
+contains a "public key".)  To get a key pair, you can either buy one from a
+certificate authority, or you can generate your own "self-signed" key pair.
+The disadvantage of using a self-signed key pair is that your users will see
+a browser warning about an untrusted certificate.  This is true of any secure
+server.
+
+To install CGIProxy using its own embedded server:
+
+    1) Set $SECRET_PATH.
+    2) Copy your certificate and private key, both in PEM format, into the
+       ".cgiproxy" directory under your home directory (or whatever you may
+       have set $PROXY_DIR to).
+    3) Set $CERTIFICATE_FILE and $PRIVATE_KEY_FILE to the file names from the
+       previous step.
+    4) Optionally, you can password-protect your proxy by setting $EMB_USERNAME
+       and $EMB_PASSWORD.
+    5) If you intend to run CGIProxy as root (superuser), then it's highly
+       recommended that you set $RUN_AS_USER to the user that CGIProxy should
+       have the permissions of (i.e. NOT root).
+    6) Copy nph-proxy.cgi to your server machine.  Do not put it under your Web
+       directory.
+    7) Change the file's permissions to be executable.  On Unix and Mac, you
+       can do this with the command "chmod +x nph-proxy.cgi"; there are other
+       ways.
+    8) In the directory where you copied nph-proxy.cgi, run the command
+       "./nph-proxy.cgi init" (or in Windows, "perl nph-proxy.cgi init").
+       This installs the optional Perl modules to e.g. let you visit secure
+       sites.  If you can't run this as root/administrator, it will still
+       work, but see the instructions displayed at the end after all the
+       scrolling text (which you can ignore).  If it asks you any questions,
+       you can just hit <return>.
+    9) If you're using a database, add the cron job to purge old data-- see
+       the section USING A DATABASE above.
+
+To start the embedded server, run the command "./nph-proxy.cgi start-server"
+(or in Windows, "perl nph-proxy.cgi start-server") from the directory where you
+uploaded the script.  It will try to use the port you tell it with the "-p"
+option (default=443); if that fails, it will use another random port.  After
+you run the command, it will tell you the URL to access the proxy with
+(including the actual port number), and the process ID of the server.
+
+It may take a while the first time you run it, as it will install some required
+Perl modules if you don't already have them; you can ignore the scrolling text.
+If it asks you any questions, you can just hit <return>.
+
+To stop the embedded server, run the command "killall nph-proxy.cgi".
+
+
+AFTER YOU INSTALL:
+
+If you want your proxy to be usable by other people, you need to communicate
+the proxy URL to them.  Try to use a secure method to do so, or else the proxy
+could easily be discovered by censors and blocked, or worse.
+
+IN PARTICULAR, DON'T BE TEMPTED TO POST YOUR PROXY URL TO ANY PUBLIC SITES THAT
+LIST AVAILABLE PROXIES.  IF YOU DO, THE CENSORS WILL QUICKLY SEE YOUR PROXY AND
+BLOCK IT, OR THERE MAY BE EVEN WORSE CONSEQUENCES.  THESE PROXY-LISTING SITES
+MAY BE USEFUL FOR ANONYMITY, BUT FOR GETTING AROUND CENSORSHIP THEY ARE
+DANGEROUS!  THEY MAKE THE CENSORS' JOB EASIER.
+
+IN ADDITION, PEOPLE SHOULD ONLY BE USING PROXIES INSTALLED BY PEOPLE OR
+ORGANIZATIONS THAT THEY TRUST.
+
+If heavy use of this proxy puts too much load on your server, see "NOTES ON
+PERFORMANCE" near the top of the source code. The biggest improvement comes
+from running this under mod_perl or FastCGI.
+
+
+TROUBLESHOOTING:
+
+If you don't know Perl, but need to configure CGIProxy:
+
+Here's an entry from the FAQ:
+
+    If you don't know Perl, you can guess how to set an option's value by
+    emulating the examples already in there.  Variables starting with "$" hold
+    single values, and variables starting with "@" hold lists of values.  Lines
+    beginning with "#" are comments and are ignored when the program runs.  As
+    in most programming languages, 1 means true and 0 means false.  Also as in
+    most programming languages, values that are text-like and not numbers (like
+    server names or IP addresses) are called "strings" and should be enclosed
+    in single or double quotes. 
+
+------------------------------------------------------------------------
+4. USAGE:
+
+Call the script directly to start a browsing session.  Once you've gotten
+a page through the proxy, everything it links to will automatically go
+through the proxy.  You can bookmark pages you browse to, and your
+bookmarks will go through the proxy as they did the first time.
+
+------------------------------------------------------------------------
+5. HELP IMPROVE THIS PROXY BY TELLING ME:
+
+1) Any kind of links in HTML, JavaScript, CSS, or Flash that aren't being
+converted, including non-standard tags or links.
+
+2) Any method of introducing JavaScript or other executable content that's not
+being filtered out.
+
+3) Any file types that contain links that need to be converted, other than
+what's handled now (I know about PDFs).
+
+4) Any other ways you can find to compromise anonymity.
+
+
+Please verify you're using the latest version of CGIProxy before emailing me.
+
+------------------------------------------------------------------------
+6. LIMITS AND BUGS:
+
+ANONYMITY MAY NOT BE PERFECT!!  In particular, there may be some holes where
+unproxified JavaScript or Flash content can slip through.  If you find any,
+please tell me.  For best anonymity, turn JavaScript and Flash off in your
+browser (best), and/or configure CGIProxy to remove scripts.
+
+Ideally, use a database to store cookies.  If you can't, then if you browse
+to many sites with cookies, CGIProxy may drop some, causing some sites to not
+work.  If this happens, delete some or all of your existing cookies (via the
+"Manage Cookies" screen) and try again.
+
+I didn't follow the spec on HTTP proxies, and there are violations of the
+protocol.  Actually, this whole concept is a violation of the proxy model,
+so I'm not too worried.  If any protocol violations cause you problems,
+please let me know.
+
+Only HTTP/HTTPS and FTP are supported so far.
+
+========================================================================
+
+7. OPTIONS:
+
+Here's a list of all the configuration options in CGIProxy, sorted into rough
+categories.  The default settings are in square [] brackets, and should work
+fine for almost all situations, though see the section "OPTIONS RELATED TO YOUR
+SERVER/NETWORK ENVIRONMENT" to be sure.  Also, see the sections "FASTCGI
+CONFIGURATION OPTIONS", "EMBEDDED SERVER CONFIGURATION OPTIONS", and "DATABASE
+CONFIGURATION OPTIONS" if needed.  For more information on any option, see
+the comments in the source code where it is set, in the user configuration section.
+
+
+OPTIONS RELATED TO YOUR SERVER/NETWORK ENVIRONMENT:
+----------------------------------------------------
+
+$PROXY_DIR ["$ENV{HOME}/cgiproxy"]
+    The directory on the server where the program can place files.
+
+$RUN_AS_USER [none]
+    User ID to run as, in case you need to start the embedded server as root.
+    Also used to indicate Web server's user ID when running as a CGI
+    or mod_perl script.
+
+$SECRET_PATH ['secret']
+    If using FastCGI or the embedded server, set this to an alphanumeric
+    sequence of characters that is hard to guess.  It will be part of the
+    URL of your proxy.
+
+$LOCAL_LIB_DIR [none]
+    The directory used by the local::lib module to install Perl (CPAN) modules.
+    Only needed if local::lib is used, i.e. if installing Perl modules not as
+    root.
+
+To enable access to secure servers:
+    Install the separate packages OpenSSL and Net::SSLeay.  Net::SSLeay is
+    automatically installed by running "./nph-proxy.cgi install-modules".
+
+To enable compressed (gzip'd) content:
+    If you're not using Perl 5.9.4 or later, then install the IO::Compress::Gzip
+    Perl module.  It is automatically installed by running "./nph-proxy.cgi install-modules".
+
+$RUNNING_ON_SSL_SERVER ['']
+    Set this if the script is running on an SSL server (i.e. accessed with
+    an "https://" URL).  Or, the default value of '' means to guess based on
+    the server port:  the script assumes SSL unless the server port is 80.
+
+$NOT_RUNNING_AS_NPH [0]
+    Set this if the script is not running as an NPH script (not recommended;
+    see comments for possible dangers).
+
+$HTTP_PROXY, $SSL_PROXY, $NO_PROXY [none]
+    If this script has to use an HTTP proxy (like a firewall), then set
+    $HTTP_PROXY to that proxy's host (and port if needed).  Set $SSL_PROXY
+    similarly when using an SSL proxy.  $NO_PROXY is a comma-separated list
+    of servers or domains that should be accessed directly, i.e. NOT through
+    the proxies in $HTTP_PROXY and $SSL_PROXY.  Also see $USE_PASSIVE_FTP_MODE
+    below when using a firewall.
+
+$PROXY_AUTH, $SSL_PROXY_AUTH [none]
+    If either or both of the proxies in $HTTP_PROXY and $SSL_PROXY require
+    authentication, then set these two variables respectively to the required
+    credentials.
+
+$SOCKS_PROXY [none]
+    To use a SOCKS 5 proxy (like Tor), set this to the SOCKS 5 proxy's host and
+    port.  It's strongly recommended to only use a SOCKS 5 proxy on the same
+    server as CGIProxy, as all data is passed in the clear between them.  Also
+    see @BANNED_NETWORKS to enable access to localhost.
+
+$SOCKS_USERNAME, $SOCKS_PASSWORD [none]
+    If your SOCKS 5 proxy uses username/password authentication, set these.
+
+$USER_FACING_PORT [none]
+    If the users see a different port externally than CGIProxy sees internally,
+    set this to the port the users see.
+
+
+FASTCGI CONFIGURATION OPTIONS:
+------------------------------
+
+$FCGI_SOCKET [8002]
+    The local port to listen on for FastCGI communication.
+
+$FCGI_NUM_PROCESSES [100]
+    Number of FastCGI processes to maintain (same as "-n" command-line parameter).
+
+$FCGI_MAX_REQUESTS_PER_PROCESS [1000]
+    How many HTTP requests each FastCGI process should handle before being
+    restarted (same as "-m" command-line parameter).
+
+
+EMBEDDED SERVER CONFIGURATION OPTIONS:
+--------------------------------------
+
+$CERTIFICATE_FILE, $PRIVATE_KEY_FILE [none]
+    Filenames of your certificate (public key) and private key, in PEM format
+    and in $PROXY_DIR.
+
+$EMB_USERNAME, $EMB_PASSWORD [none]
+    Optional username and password to protect your proxy with.
+
+
+DATABASE CONFIGURATION OPTIONS:
+-------------------------------
+
+$DB_DRIVER ['SQLite']
+    If using a database, set this to "SQLite", "MySQL", or "Oracle".
+    Leave it commented out if not using a database.
+
+$DB_SERVER [none]
+    If your database isn't running on the same server as CGIProxy, or isn't on
+    the default port, then set this to the database server and port in the form
+    "db_host:db_port".
+
+$DB_NAME ['cgiproxy']
+    Name of the database the program can use.
+
+$DB_USER ['proxy'], $DB_PASS ['']
+    CGIProxy accesses the database with this username and password.
+
+$USE_DB_FOR_COOKIES [1]
+    Set this to true to use the server-side database to store cookies.  If false,
+    will use the old method of storing cookies in the browser and sending all
+    cookies with each request, which may result in "Bad Request" errors.
+
+
+COMMON CONFIGURATION OPTIONS:
+---------------------------
+
+$TEXT_ONLY [0]
+    Allow only text resources through the proxy, to save bandwidth.
+
+$REMOVE_COOKIES [0]
+    Ban all cookies to or from all servers.  To allow and ban cookies by
+    specific servers, see @ALLOWED_COOKIE_SERVERS and @BANNED_COOKIE_SERVERS.
+
+$REMOVE_SCRIPTS [0]
+    Prevent any script content from any server from reaching the browser.
+    This includes script statements within HTML pages, external script
+    files, etc.  To allow and ban script content by specific servers,
+    see @ALLOWED_SCRIPT_SERVERS and @BANNED_SCRIPT_SERVERS.  Anonymity is
+    unreliable if you don't either remove scripts, or browse with scripts 
+    turned off in your browser.
+
+$FILTER_ADS [0]
+    Remove ads from pages, based on the patterns in @BANNED_IMAGE_URL_PATTERNS.
+    Also ban ad-related cookies by setting $NO_COOKIE_WITH_IMAGE.
+
+$HIDE_REFERER [0]
+    Don't tell servers which link you followed to get to their page.  (Yes,
+    it's misspelled on purpose.)
+
+$INSERT_ENTRY_FORM [1]
+    At the top of every page, include a small form that lets you enter
+    a new URL, change your options, or manage your cookies.
+
+$ALLOW_USER_CONFIG [1]
+    Let users set their own $REMOVE_COOKIES, $REMOVE_SCRIPTS, $FILTER_ADS,
+    $HIDE_REFERER, and $INSERT_ENTRY_FORM, via checkboxes on the entry form.
+
+sub proxy_encode {}, proxy_decode {}
+    (Requires minor programming.)  You can customize the encoding of
+    destination URLs by modifying these routines.  The default is a simple
+    unobscured URL, but sample obscuring code is included in the comments.
+    Note: If you're not removing scripts, then you also need to change
+    _proxy_jslib_proxy_encode() and _proxy_jslib_proxy_decode()-- see the
+    comments.
+
+sub cookie_encode {}, cookie_decode {}
+    (Requires minor programming.)  You can customize the encoding of cookies
+    sent to the user's machine by modifying these routines.  The default is a
+    simple unobscured cookie, but sample obscuring code is included in the
+    comments.
+    Note: If you're not removing scripts, then you also need to change
+    _proxy_jslib_cookie_encode() and _proxy_jslib_cookie_decode()-- see the
+    comments.
+
+@ALLOWED_SERVERS, @BANNED_SERVERS  [empty]
+    Allow or ban specific servers from being accessed through the proxy, based
+    on their hostname.  Each array is a list of patterns (regular expressions)
+    to match, not just single servers.
+
+@BANNED_NETWORKS  [('127', '192.168', '172', '10', '169.254', '244.0.0')]
+    Ban specific IP addresses or networks from being accessed through the
+    proxy.  Recommended for security when this script is run on a firewall.
+
+@ALLOWED_COOKIE_SERVERS, @BANNED_COOKIE_SERVERS  [empty]
+    Allow or ban cookies from specific servers.  Each array is a list of
+    patterns (regular expressions) to match, not just single servers.
+
+@ALLOWED_SCRIPT_SERVERS, @BANNED_SCRIPT_SERVERS  [empty]
+    Allow or ban script content from specific servers.  Each array is a list
+    of patterns (regular expressions) to match, not just single servers.
+
+@BANNED_IMAGE_URL_PATTERNS  [sample list in source code]
+    If $FILTER_ADS is set, then ban images that match any pattern in this list.
+
+$RETURN_EMPTY_GIF [0]
+    If an image is banned, then replace it with a 1x1 transparent GIF to
+    show blank space instead of a broken image icon.
+
+$NO_COOKIE_WITH_IMAGE [0]
+    Ban all cookies that come with images or other non-text resources.  Those
+    are usually just Web bugs, to track you for marketing purposes.
+
+$QUIETLY_EXIT_PROXY_SESSION [0]
+    (NOT for use with anonymous browsing!!!)  For VPN-like installations, let
+    the user browse directly from proxied pages to unproxied pages, with no
+    intermediate warning screens.  See the comments for more info.
+
+$PROXIFY_SCRIPTS [1]
+    Proxify all supported script content.  Currently, only JavaScript is
+    supported.
+
+$PROXIFY_SWF [1]
+    Support Flash apps, i.e. reroute all network accesses in them back through
+    this program.
+
+$ENCODE_URL_INPUT [1]
+    When submitting a URL through either the start form or the top form,
+    encode it first by using proxy_encode().
+
+$USER_IP_ADDRESS_TEST ['']
+    This lets you call an external test to authorize the user.  See comments
+    for more details.
+
+$DESTINATION_SERVER_TEST ['']
+    This lets you call an external test to determine if the destination
+    server is allowed (as opposed to using @ALLOWED_SERVERS and
+    @BANNED_SERVERS).  See comments for more details.
+
+%REDIRECTS [none]
+    This lets you automatically redirect a URL to another URL, perhaps to one
+    that works better through CGIProxy, such as a mobile site.
+
+
+INSERTING A STANDARD HEADER INTO EACH PAGE:
+-------------------------------------------
+
+$INSERT_HTML  [none]
+    Insert your own block of HTML into the top of every page.
+
+$INSERT_FILE  [none]
+    Insert the contents of the named file into the top of every page.  Can't
+    be used with $INSERT_HTML.
+
+$ANONYMIZE_INSERTION [1]
+    If $INSERT_HTML or $INSERT_FILE is used, then anonymize that HTML along
+    with the rest of the page.
+
+$FORM_AFTER_INSERTION [0]
+    If $INSERT_HTML or $INSERT_FILE is used, and $INSERT_ENTRY_FORM is set,
+    then put the URL entry form after the inserted HTML instead of before it.
+
+$INSERTION_FRAME_HEIGHT [80 or 50, depending on $ALLOW_USER_CONFIG]
+    On pages with frames, make the top frame containing any insertions this
+    many pixels high.
+
+
+MINOR OR SELDOM-USED OPTIONS:
+-----------------------------
+
+@PROXY_GROUP  [empty]
+    This is an experimental feature which may help with load balancing, or
+    may have other creative uses.  Cookies won't work if you use this.
+    See the comments for further info.
+
+$SESSION_COOKIES_ONLY [0]
+    Force all cookies to expire when the current browser closes.
+
+$MINIMIZE_CACHING [0]
+    Try to prevent the user's browser from caching, i.e. from storing anything
+    locally.  Better privacy, but consumes more bandwidth and seems slower.
+
+$USER_AGENT  [none]
+    Tell servers you're using this browser instead of what you're really using.
+
+@TRANSMIT_HTML_IN_PARTS_URLS  [empty]
+    Transmit each part of certain HTML pages back to the user as they are
+    received, rather than wait for the whole page.  This is set to a list of
+    patterns that match URLs for which you want this treatment.
+
+$USE_PASSIVE_FTP_MODE [1]
+    When doing FTP transfers, use "passive mode" instead of "non-passive mode".
+    Passive mode tends to work better when this script runs behind a firewall,
+    but that varies by network.
+
+$SHOW_FTP_WELCOME [1]
+    When showing FTP directories, always display the FTP welcome message,
+    instead of never displaying it.
+
+$PROXIFY_COMMENTS [0]
+    Proxify the inside of HTML comments as if it's not inside comments.
+
+$USE_POST_ON_START [1]
+    Use POST instead of GET when submitting the URL entry form.
+
+$REMOVE_TITLES [0]
+    Remove titles from HTML pages.
+
+$NO_BROWSE_THROUGH_SELF [0]
+    Prevent the script from calling itself.
+
+$NO_LINK_TO_START [0]
+    Don't link to the start page from error pages.
+
+$MAX_REQUEST_SIZE [4194304 = 4 Meg]
+    (Obscure.) The largest request that can be handled in certain rare
+    situations involving password-protected sites.
+
+$ALLOW_UNPROXIFIED_SCRIPTS [0]
+    Allow scripts of unsupported type to pass through the proxy.
+
+$COOKIE_PATH_FOLLOWS_SPEC [0]
+    When handling cookies with no path, treat it according to the cookie spec.
+    If not set, behave as browsers (erroneously) do, i.e. set the path to "/".
+
+$RESPECT_THREE_DOT_RULE [0]
+    Restrict cookie domains as they should be, based on how many dots they
+    have.  If not set, behave as browsers (erroneously) do, i.e. loosen
+    restrictions on cookie domains with two dots.
+
+$ALERT_ON_CSP_VIOLATION [0]
+    When there is a Content Security Policy (CSP) violation, show a message
+    to the user.  When not set, just show such error messages in the JavaScript
+    console.  This is usually just used for testing.
+
+%TIMEOUT_MULTIPLIER_BY_HOST [ "www.facebook.com" => 10 ]
+    Multiply timeouts in JavaScript by this much, for the listed servers.
+    This can be used to reduce crashes and improve performance on certain
+    JavaScript-heavy sites.
+
+$ALLOW_RTMP_PROXY [0]
+    (Currently unused.)  Allow the creation of an RTMP proxy process.
+
+========================================================================
+
+
+8. CH'CH'CH'CH'CHANGES:
+-----------------------
+
+
+2.1.17, released June 11, 2016:
+-------------------------------
+
+Fixed to no longer access Window.prototype, which has been recently disallowed
+by most browsers.  This makes *many* websites work again, including Gmail,
+YouTube, and facebook.
+
+A few other bug fixes.
+
+
+
+2.1.16, released November 19, 2015:
+-----------------------------------
+
+Cleaned up installation process.  In particular, $RUN_AS_USER and $PROXY_DIR
+should now be set before running "./nph-proxy.cgi init", so that file
+ownership and permissions can be set correctly.
+
+Added Dutch localization.
+
+
+
+2.1.15, released October 21, 2015:
+----------------------------------
+
+Database support is MUCH less error-prone.  The database is created when
+running "./nph-proxy.cgi init" rather than when running as a CGI script
+or manually, which is really how it should have been done all along.  Better
+separation of the various roles and permissions.
+
+Added support for SQLite databases, which means you can now use a database
+without running a database engine like MySQL/MariaDB or Oracle.  $DB_DRIVER
+now defaults to "SQLite", hopefully making "Bad Request" errors a thing of
+the past.
+
+There is now a "./nph-proxy.cgi init" command, which a) creates needed
+directories, b) installs all Perl modules (like the "install-modules"
+command" has done), and c) creates the database.  "install-modules" still
+works, but is usually unnecessary.
+
+Accordingly, the installation instructions at install.html have been
+updated.
+
+Added support for Storage objects, mostly.
+
+MANY major fixes to CORS support, XMLHttpRequest support, cookie support,
+and other areas, making popular sites work again.
+
+
+
+2.1.14, released November 13, 2014:
+-----------------------------------
+
+Fixed FastCGI support.  Note that $FCGI_SOCKET is now a listening port number
+rather than a Unix-domain socket (which wasn't working well anyway).  Be sure
+to fix your setting of $FCGI_SOCKET; more details are in the comments above
+it in the configuration section.  Also note that the installation page has
+been updated with better FastCGI configuration for nginx and Apache.
+
+Added the $USER_FACING_PORT config variable for when one user-facing web server
+calls CGIProxy running under other web server software, or any other case when
+the port the user sees isn't the same port that CGIProxy sees.
+
+Many bug fixes, making many more sites work.  Major sites are working again,
+and in all major browsers.
+
+
+
+2.1.13, released October 6, 2014:
+---------------------------------
+
+Complete performance rewrite of the JavaScript-modifying code, i.e. proxify_js()
+and related routines.  The delay when viewing YouTube video pages is much shorter,
+and the load on the server CPU is much less.  :)
+
+Several bug fixes.
+
+
+
+2.1.12, released June 21, 2014:
+-------------------------------
+
+Now has fully-tested and working IPv6 support.
+
+Works again with older Socket module.  Note that IPv6 support only works with
+Socket 1.94 or later.
+
+Several bug fixes.
+
+
+
+2.1.11, released May 31, 2014:
+------------------------------
+
+Added CORS support, which among other things makes YouTube work again.
+
+Added a page about CGIProxy security, linked to from the footer on the CGIProxy
+start page and all error and similar pages.
+
+Added untested IPv6 support-- please tell me how it works if you have IPv6 access!
+
+Several bug fixes.
+
+
+
+2.1.10, release April 5, 2014:
+------------------------------
+
+Added Spanish and Polish message localization.
+
+Added support for LZMA-compressed SWF files.  Note that this requires the
+Perl module IO::Compress::Lzma, which will be installed if you run
+"./nph-proxy.cgi install-modules" again, like you did when you first
+installed CGIProxy.
+
+Added %TIMEOUT_MULTIPLIER_BY_HOST option, to tune performance with certain
+sites.
+
+Fixed many bugs, making many sites work better.
+
+
+
+2.1.9, released January 27, 2014:
+---------------------------------
+
+Added German, Italian, Javanese, and Sundanese message localization.
+
+Content Security Policy (CSP) 1.0 is now supported with Firefox and Chrome.
+Other browsers, and CSP 1.1, will be added when they support CSP.
+
+Added $ALERT_ON_CSP_VIOLATION option.
+
+Various bugs fixes and workarounds.
+
+
+
+2.1.8, released October 22, 2013:
+---------------------------------
+
+Added Chinese, French, and Indonesian message localization.
+
+The full Gmail now works through CGIProxy.
+
+YouTube once again works through CGIProxy.
+
+Can now use a SOCKS 5 proxy, such as Tor (recommended only on same server).
+Configured with $SOCKS_PROXY, $SOCKS_USERNAME, and $SOCKS_PASSWORD .
+
+Database initialization now works better.
+
+Can now use a remote database by setting the $DB_SERVER config variable.
+
+Many bugs fixed or worked around, and privacy holes closed.
+
+Now once again runs on Perl 5.6.1 (one statement in 2.1.7 required Perl 5.10.0).
+
+Shuffles HTTP request headers to better avoid detection.
+
+$ANONYMIZE_INSERTION now defaults to 1.
+
+
+
+2.1.7, released July 26, 2013:
+------------------------------
+
+CGIProxy now has message localization:  The user can choose an interface in
+Arabic, English, Farsi, Russian, or Turkish.  If you would like support for
+other languages, please consider translating CGIProxy's messages-- see
+http://www.jmarshall.com/tools/cgiproxy/translate.html for full details.
+
+The full facebook site now works almost fully through CGIProxy, so it's no
+longer redirected to the mobile site by default.  If it's slow for you or your
+users, see the comments and suggestions above where %REDIRECTS is set.
+
+Running under FastCGI now works on servers other than just nginx.
+
+Resuming partial downloads is now supported, with partial support of the
+Range: header.
+
+The JavaScript library (jslib) is now gzipped when possible, to save bandwidth.
+Should have done this a while ago.
+
+Fixed error with "-c" in usage message; sorry about that.
+
+Added support for Content-Security-Policy: header, though it's disabled until
+the header is better defined and browsers support it.
+
+Many bugs fixed, making many sites work better.
+
+
+
+2.1.6, released February 4, 2013:
+--------------------------------
+
+Now can run as a FastCGI script.
+
+Now can run without an external HTTP server, by using its own embedded secure
+HTTP server.
+
+Installation is easier, as Perl modules can be automatically installed
+(including under your home directory) by running
+"./nph-proxy.cgi install-modules" from the command line.  See the $LOCAL_LIB_DIR
+config option, if you need to install the modules and you're not root.
+
+Windows support has improved.
+
+Documentation has been improved, especially for installation.
+
+Command-line usage is now documented; run "./nph-proxy.cgi -?" for usage.
+
+There are some new config options, mostly for FastCGI support, the embedded
+server, and database support.
+
+Some of the configuration section has been rearranged; most potentially
+needed config options are now near the top.
+
+Fixed a bug handling spaces in path when using proxy_encode().
+
+
+
+2.1.5b, released November 10, 2012:
+----------------------------------
+
+Added redirection for Gmail to %REDIRECTS ; redirects to HTML-only version.
+
+
+
+2.1.5, released October 21, 2012:
+---------------------------------
+
+Now optionally uses a server-side database to store cookies, which fixes
+"Bad Request" errors when user has too many cookies.  Can use either MySQL
+or Oracle.  Configure this with $DB_DRIVER, $DB_USER, $DB_PASS, and
+$USE_DB_FOR_COOKIES .
+
+Now supports a simple mechanism to automatically redirect pages that aren't
+handled well by CGIProxy.  For example, www.facebook.com is redirected to
+m.facebook.com (mobile), until we can get www.facebook.com working better.
+This is configured with the %REDIRECTS hash.
+
+17 bugs fixed, mostly in JavaScript support but some in Flash and HTML support too.
+
+
+
+2.1.4, released May 8, 2012:
+----------------------------
+
+Fixed a bug with chunked responses, making captcha work better.
+
+Closed some privacy holes in JavaScript and Flash support.
+
+Fixed some small bugs, making more pages work better.
+
+Added "Delete all cookies" link to top of cookie management screen.
+
+
+
+2.1.3, released April 27, 2012:
+-------------------------------
+
+Improved Flash support, including better support for online video.  No delay
+with YouTube anymore.
+
+Improved support for Same-Origin Policy (browser security).
+
+Other security fixes.
+
+Other fixes and workarounds, making more pages work correctly.
+
+
+
+2.1.2, released April 8, 2012:
+------------------------------
+
+Added "download" link to footer.
+
+Fixed "SSL options" bug.
+
+No longer fails in Windows because of getpwuid() call.
+
+Various security fixes.
+
+Various small fixes to make more pages work better.
+
+Internal: rewrote _proxy_jslib_handle() and _proxy_jslib_assign() more cleanly,
+using _proxy_jslib_instanceof() instead of the error-prone _proxy_jslib_object_type()
+(which was removed).  Still works around many browser bugs.  :P
+
+
+
+2.1.1, released January 19, 2012:
+---------------------------------
+
+$ENCODE_URL_INPUT is now on by default, and is fixed to work better in all
+major browsers.
+
+Link to CGIProxy home page in the footer is now proxified.
+
+Now supports jQuery-based sites better.
+
+Added support for a few non-standard HTTP request headers.
+
+Works better with captcha.
+
+$NO_COOKIE_WITH_IMAGE is now off by default, to support captcha.
+
+Many small fixes and workarounds, including several privacy and security fixes.
+
+
+
+2.1, released December 9, 2011:
+-------------------------------
+
+Flash 9 and later is now supported, which among other things means YouTube
+works through CGIProxy again.
+
+Changed flag segment of full URLs to something less obvious.
+
+Now supports "data:" URIs.
+
+Now supports ECMAScript (JavaScript) version 5.
+
+Many fixes in JavaScript support and elsewhere.
+
+No longer eats memory when connecting to secure servers.
+
+$PROXIFY_SWF is now set by default.
+
+Now uses the Encode module instead of the old utf8:: stuff.
+
+Added two config options $PROXY_DIR and $ALLOW_RTMP_PROXY, though they're not
+used yet.
+
+
+
+2.1beta19, released December 25, 2008:
+--------------------------------------
+
+Fixed a couple of bugs with cookies, so they (including logins) should work
+better.
+
+Fixed so that Safari no longer chokes on StorageList handling.
+
+Various other small fixes.
+
+
+
+2.1beta18, released August 10, 2008:
+------------------------------------
+
+Certain pages were very slow in MSIE due to the way MSIE implements
+Array.pop(), so a lot of code was rewritten to avoid using Array.pop().  Those
+pages now function at normal speed in MSIE.  Some pages see an improvement
+of 10x or better.
+
+proxify_js() is now about 5% faster due to reworking of $div_ok setting.
+
+Now handles "application/xhtml+xml" content correctly.
+
+$REMOVE_SCRIPTS and $HIDE_REFERER both now default to 0 (false).
+
+Various small fixes, workarounds, and cleanup.
+
+
+
+2.1beta17, released March 11, 2008:
+-----------------------------------
+
+Fixed a couple of bugs with SWF (Flash) support.  In particular, <param> tags
+are now proxified correctly when in certain <object>s, and thus youtube.com now
+works when using MSIE.
+
+
+
+2.1beta16, released March 3, 2008:
+----------------------------------
+
+Includes a ton of fixes and workarounds in JavaScript support, making more
+sites work through it.
+
+Includes a fair amount of performance improvement too.
+
+Added experimental support for Shockwave Flash (SWF) apps.  If you set
+$PROXIFY_SWF=1, the script will proxify the SWF bytecode so that any
+network accesses go back through the same script.  It works with many but
+not all Flash apps.  Sometimes it can slow down a page, if the page has e.g.
+lots of Flash ads.
+
+Fixed port-handling in HTTP Basic authentication support.
+
+Several other small bug fixes, cleanup, and comments.
+
+
+
+2.1beta15, released October 26, 2006:
+-------------------------------------
+
+Fixed bug handling "javascript:" URLs that was causing some sites to fail.
+
+Fixed bug in _proxy_jslib_cookie_encode() and _proxy_jslib_cookie_decode(),
+in the commented-out rot-13 line.  Cookies should now work when using rot-13.
+
+"about:blank" pages no longer generate the "WARNING:" page.
+
+In the start page, the URL entry field now initially has focus (only if JS
+is running).
+
+Added support for Element.getElementsByTagName to _proxy_jslib_handle()
+(though it's done in the form of "Node.getElementsByTagName").
+
+Now explicitly defaults the first argument of "Document.open()" to text/html.
+This is supposed to happen anyway, but not all browsers do it correctly when
+writing to a frame.
+
+Proxification of top-level "return" statements should now work better in a
+couple of ways.
+
+Several more small fixes and cleanup, making more sites work.
+
+
+
+2.1beta14, released October 16, 2006:
+-------------------------------------
+
+Better handling of "javascript:" URLs.
+
+Now correctly handles "delete(...)" .
+
+Various browser bugs/crashes are now trapped by try/catch blocks so they're
+not fatal.
+
+More erroneous HTML and JavaScript is now worked around.
+
+Many more small fixes and workarounds.
+
+
+
+2.1beta13, released September 12, 2006:
+---------------------------------------
+
+The $TRANSMIT_HTML_IN_PARTS config variable has been removed; now you only
+need to set @TRANSMIT_HTML_IN_PARTS_URLS .  Use of both was redundant.
+
+Now correctly handles UTF-8 content.
+
+Authorization cookies are now associated with the server and port, rather than
+just the server.
+
+Worked around MSIE bug that shifts centered content to the right.
+
+Now works around more erroneous HTML, JavaScript, and browser behavior.
+
+Other minor fixes.
+
+
+
+2.1beta12, released June 6, 2006:
+---------------------------------
+
+Now optionally supports compression (gzip) of message bodies, if the
+Compress::Zlib Perl module is installed.  This also helps with certain server
+bugs.
+
+To help with pages that are returned in parts with long delays between those
+parts, you can now use the $TRANSMIT_HTML_IN_PARTS and
+@TRANSMIT_HTML_IN_PARTS_URLS options to have CGIProxy process and return each
+piece of HTML as it receives it rather than wait for the whole page.  This
+helps with certain library database queries, for example.
+
+Further improved CSS handling, including better display of the top form.
+
+Improved handling of "&#nnn;" HTML entities.
+
+Better updating of the top form when using frames.
+
+When $TEXT_ONLY is set, there are no longer any wasteful attempts to get the
+images (unless $RETURN_EMPTY_GIF is set).  Also, $RETURN_EMPTY_GIF now defaults
+to 0 .
+
+Now handles JavaScript's deprecated with() statement.
+
+Now handles Document.referrer .
+
+Cookie values are now allowed to have spaces in them, even though that's
+technically illegal; unfortunately, some sites require them to work.  If this
+causes any problems, please let me know.
+
+Other minor fixes.
+
+
+
+2.1beta11, released March 14, 2006:
+-----------------------------------
+
+Improved (though not yet perfect) CSS handling.
+
+Now uses a different system to track which elements have been proxified.
+(PLEASE tell me if you find any privacy holes, i.e. when the browser
+makes a direct connection to the end server when it should be going though
+CGIProxy.)
+
+Fixed a hang when using MSIE and IIS.
+
+HTML (e.g. innerHTML) is no longer doubly-proxified when using "+=".
+
+Improved handling of &#nnn; -type entities.
+
+No longer inserts "<!-- resource has been modified by proxy -->"; it was
+becoming more trouble than it's worth.
+
+Better handling of data retrieved through XMLHttpRequest.
+
+Cleaner support of Document.domain .
+
+Many other minor fixes, workarounds, and cleanup, mostly in JavaScript support.
+
+
+
+2.1beta10, released December 6, 2005:
+-------------------------------------
+
+Now supports UTF-16 pages, if using Perl 5.8.0 or later.
+
+Now supports query-only URLs.
+
+Window.open with a relative URL is now handled correctly.
+
+In JavaScript, (non-standard) octal numbers and characters are now handled.
+
+Now allows (erroneous) commas in cookie values, created by at least one server.
+
+Now allows (erroneous) line terminators in JavaScript string literals if
+  preceded by a "\", since browsers seem to allow it.
+
+Many other minor fixes, mostly in JavaScript support.
+
+
+
+2.1beta9, released October 27, 2005:
+------------------------------------
+
+Cleaned up URL handling in proxy_encode(), proxy_decode(), and their JS
+counterparts.  Those routines are now back to their old format in which
+they contain only user-configurable statements.  The "do not remove" code
+has been moved into wrapper functions; anywhere proxy_encode() is called
+should now call wrap_proxy_encode() instead, and the same is true for the
+three other related routines.
+
+@BANNED_NETWORKS now includes the whole 127.x.x.x subnet.
+
+Cookies are now handled more like browsers handle them (though not as the
+spec calls for), in a couple of ways.
+
+In the JavaScript code, reworked handling of "delete", preincrement, and
+predecrement.  Those operators are now handled much better.
+
+Other minor fixes.
+
+
+
+2.1beta8, released August 23, 2005:
+-----------------------------------
+
+Now more properly encodes all "?", "#", and others in default proxy_encode().
+This includes further working around aforementioned Apache bug with PATH_INFO.
+
+Now supports Accept-Language: header in requests, which means that pages will
+more often be returned in the expected language.
+
+Added support for query-only URLs, i.e. those beginning with "?".  Don't know
+why this never came up before.
+
+A couple fixes and workarounds in JavaScript support.
+
+Other minor fixes.
+
+
+
+2.1beta7, released June 28, 2005:
+---------------------------------
+
+Added a "Report a bug" link in the top form, which will hopefully result
+in more bug reports.
+
+Now supports (erroneous) JavaScript that contains the string "</script"
+within it, as browsers do.
+
+Worked around an Apache bug (fixed in 2.0.55) that causes problems when
+PATH_INFO contains "//".
+
+Fixed a few bugs in JavaScript handling.
+
+Other minor fixes.
+
+
+
+2.1beta6, released May 24, 2005:
+--------------------------------
+
+JavaScript is now supported, i.e. JavaScript is modified as necessary to
+route all network accesses back through the script.
+
+$PROXIFY_SCRIPTS is now on by default.
+
+Unsupported scripts are now removed by default; to not remove them, use
+$ALLOW_UNPROXIFIED_SCRIPTS.
+
+Top form has been put into its own one-cell table, with a white background.
+This makes it readable on many pages where it wasn't before.
+
+Checkbox text in top form now uses <label> tags, to allow clicking on text.
+
+Now can encode URLs before submitting them, if you set $ENCODE_URL_INPUT.
+
+Now supports external tests for valid user IP address ($USER_IP_ADDRESS_TEST)
+and valid destination server ($DESTINATION_SERVER_TEST).  Both may be either
+a command-line program, or a CGI script on a remote server.  These features
+were added at the request of (and paid for by) the International Broadcasting
+Bureau.
+
+No longer times out after 10 minutes, which will help with large files.
+
+Added some more appropriate values to @BANNED_NETWORKS.
+
+Cookies with no path specified now use a path of "/", even though that
+violates the spec, because that's how browsers treat them.  If you want
+to follow the spec instead, you can set $COOKIE_PATH_FOLLOWS_SPEC.
+
+Illegal cookie domains that contain only two dots but are not in one of
+the seven main TLDs are now allowed by default, because that's how browsers
+behave.  You can follow the spec instead by setting $RESPECT_THREE_DOT_RULE.
+
+Many other minor fixes, and workarounds for browser bugs and buggy sites.
+
+
+
+2.0.1, released November 19, 2002:
+----------------------------------
+
+This release improves compatibility and installability in a few environments;
+it doesn't really add new features.  In particular:
+
+An SSL proxy is now supported with the $SSL_PROXY option, analogous to
+$HTTP_PROXY.  Authentication for it is handled with $SSL_PROXY_AUTH,
+analogous to $PROXY_AUTH.
+
+The $RUNNING_ON_WINDOWS option is no longer needed, and so no longer exists--
+relevant code now determines the OS automatically when needed, or is handled
+another way.
+
+Sockets now work correctly on BSDI and possibly other systems, where before
+the script generated messages like "Address family not supported by protocol
+family" and possibly others.  It works now because socket address structures
+are created with the general pack_sockaddr_in() and inet_aton() functions from
+the Socket module, instead of the traditional hard-coded "pack('S n a4 x8')"
+method.  The new way is more "correct", given that we're already loading the
+Socket module anyway.  It should help for future IPv6 support too.
+
+All page insertions, including the initial "<!-- resource ... -->" comment, are
+now inserted *after* any initial <!doctype> declaration, to avoid confusing
+MSIE 6.0, which does not allow comments before an initial <!doctype>.  The
+problem showed up as subtle errors in page elements (like fonts, etc.) when
+using MSIE; some or all of these problems should go away now.
+
+Cache behavior when using a caching HTTP proxy should be correct now, because
+Pragma: and Cache-Control: headers (if available) are now passed through to
+the outgoing request.  Before, caches would not always refresh as expected,
+so page reloads didn't always work.
+
+Fixed a compilation error when using certain older versions of Perl.
+
+
+
+2.0, released September 18, 2002:
+---------------------------------
+
+This is a MAJOR release, even though most of the changes are internal.  Some
+things about the 2.0 script are fundamentally different from the 1.x series.
+Here's a list of changes, roughly categorized:
+
+
+---- Visible new features and changes: ----
+
+Now supports SSL, i.e. can retrieve pages on secure servers.  For this to
+work, the separate packages OpenSSL and Net::SSLeay must be installed.  If
+they are not installed, then CGIProxy still works but cannot download pages
+from secure servers.  Also, it is strongly recommended to run CGIProxy on a
+secure server when SSL is supported, or else secure data will be compromised
+on the link between the browser and CGIProxy.
+
+The top entry form now has an "UP" link, which links to the parent directory of
+the current URL.  The idea comes from the (quite useful) button in Konqueror.
+
+Handling of top insertions has been cleaned up-- FTP directory listings now
+include the correct insertions, and other cleaner behavior.
+
+
+---- New or changed config options: ----
+
+$RUNNING_ON_SSL_SERVER is now a three-way option:  If it's set to '', then
+assume an SSL server if and only if port 443 is being used.  Besides being a
+good default, this lets you put the script where it can be served by both a
+secure server and a non-secure server.
+
+Perl 4 is no longer supported.  CGIProxy should run fine with Perl 5.004 or
+later.  Better yet, upgrade to Perl 5.6.1 or later if you can-- future
+versions of CGIProxy may require that for some features.
+
+FTP requests now use passive (PASV) mode by default, though you can use
+non-passive mode by setting $USE_PASSIVE_FTP_MODE=0.
+
+$HTTP_PROXY and $NO_PROXY are now used instead of $ENV{'http_proxy'} and
+$ENV{'no_proxy'}.
+
+For VPN-like installations, there is now a $QUIETLY_EXIT_PROXY_SESSION option
+that allows a smooth transition from browsing an intranet through the proxy
+to browsing external sites directly, without getting intermediate warning
+screens.  It's not meant for any situation where anonymity is important.  See
+the comments where it is set for more details.
+
+Set the new $SESSION_COOKIES_ONLY option to make all cookies expire when the
+browser closes.
+
+Set the new $MINIMIZE_CACHING option to minimize any caching that may be done
+by the browser, by using appropriate HTTP response headers.  Cacheability of
+various responses has also been cleaned up in general.
+
+If for some reason you want content (e.g. HTML) inside <!-- --> comments to
+be proxified like the rest, set the new $PROXIFY_COMMENTS option.
+
+Improved the sample list of ad servers in @BANNED_IMAGE_URL_PATTERNS.
+
+Cleaner and slightly different handling of $INSERT_HTML and $INSERT_FILE;
+see comments in user config section for details.
+
+$FASTER_HTML_LESS_PRIVACY no longer exists, because it's no longer relevant
+with the new HTML-parsing structure (see below).
+
+
+---- For programmers: ----
+
+SSL support was implemented as a package that implements a tied filehandle,
+called "SSL_Handle".  The idea came from the Net::SSLeay::Handle module,
+which for a couple reasons wasn't suitable to use directly.  The SSL_Handle
+package may be useful in other SSL applications, though this version is not
+a full implementation.  It does buffer its input, though, which can make it
+a much faster alternative to Net::SSLeay's ssl_read_until() routine.
+
+The entire section of code that modifies an HTML response (roughly 20-25% of
+the whole program) has been completely rewritten from scratch, and has a new
+structure.  It's MUCH cleaner and slightly smaller than before, and is now
+encapsulated in the routine proxify_html().  It handles the heterogeneity of
+HTML correctly, i.e. non-HTML content that can exist within HTML (like
+scripts, stylesheets, comments, or SGML declarations) is correctly separated
+out and handled according to type.  Also, tags are fully parsed into
+attributes and rebuilt if needed, instead of hacking it with long regular
+expressions as before; this removes a family of potential bugs and a lot of
+messy code.  Overall, the results are more accurate, and the new structure is
+much more solid, flexible, and extensible, and much easier to work with than
+before; it should let us solve any new problems in the "right" way when they
+arise.  :) :)
+
+Many other sections of code have been partially or entirely rewritten, and
+behavior is generally cleaner.
+
+Global variables are now handled much more cleanly, especially regarding
+their persistence when using mod_perl.  Variables are now (almost) completely
+divided between UPPER_CASE constants which retain their values between runs,
+and lower_case variables which are reset for each run.  After the user config
+section is a constant initialization section; both are run only during the
+first run of the script, and are skipped for efficiency during subsequent
+runs under mod_perl.  The config and initialization sections have been
+arranged more carefully than before, for clarity and other reasons.  Several
+variables have had their semantics clarified.
+
+NOTE: If you modified the code in an earlier version and used certain config
+variables, you should review the new code before inserting the same changes.
+For example, a variable like $REMOVE_SCRIPTS should normally be replaced by
+$e_remove_scripts; the former is the config setting that never changes
+anymore, while the latter reflects the value used for this run of the program
+(which the user might change via a checkbox).  There are several similar
+variables.  Also, avoid modifying UPPER_CASE variables, because those will
+retain their values between runs under mod_perl... unless that's what you
+want.
+
+
+---- Other stuff: ----
+
+The HTTP client in CGIProxy now uses HTTP/1.1 if the browser uses HTTP/1.1.
+Before, only certain HTTP/1.1 features like the Host: header were supported;
+now, all required HTTP/1.1 client features are supported, so CGIProxy is
+"conditionally compliant" with HTTP/1.1 regarding its client functions, as
+per the HTTP spec.  CGIProxy can't control all server functions, but for
+those that it does (such as the Date: header), it complies with HTTP/1.1.
+
+Improved detection of text vs. non-text when supporting $NO_COOKIE_WITH_IMAGE,
+which makes some pages behave better.
+
+Many changes to take advantage of Perl 5, such as "use strict", better
+regular expressions, references, and cleaner code all over the place.
+
+Various other bugs fixed, privacy holes closed, performance improvements, UI
+improvements, code rearrangement, and cleanup.
+
+
+
+1.5.1, released February 7, 2002:
+---------------------------------
+
+Headers are no longer split on commas, which among other things means that
+cookies work again.  :P
+
+A couple other minor bug fixes.
+
+
+
+1.5, released November 26, 2001:
+--------------------------------
+
+Many changes this time around, some major, some minor.  The code is about
+50% larger.  Here's a list of changes, roughly categorized:
+
+
+---- Most visible new features and changes: ----
+
+A new cookie management screen lets the user view and selectively delete any
+cookies being sent through the proxy.
+
+On pages with frames, any insertion (such as the small URL entry form) is now
+in its own top frame.
+
+Cookies may now be encoded with the cookie_encode() and cookie_decode()
+routines, similar in concept to proxy_encode() and proxy_decode().
+
+
+---- Making more pages work: ----
+
+Referrer information, required by some servers, is now optionally sent to
+the server.
+
+Certain pages with Flash or other embedded objects now work better.
+
+HTTP URLs which include authentication in them (e.g. "username:password")
+are now supported.
+
+Links to "javascript:" URLs are handled in a more friendly way.
+
+Inline frames (i.e. <iframe> tags) are now handled like frames with regard
+to insertions.
+
+
+---- New config options: ----
+
+If you're running this on or inside a firewall, use @BANNED_NETWORKS to ban
+access to single hosts and whole networks by IP address.  This is more
+reliable than banning by hostname.
+
+Set $REMOVE_TITLES to remove titles from HTML pages.
+
+Error pages now link to the starting page, unless $NO_LINK_TO_START is set.
+
+
+---- For programmers: ----
+
+There's now a simple framework for handling any arbitrary MIME types that
+may need modification (e.g. changing embedded links); see proxify_block().
+To add handling for a MIME type, add code in proxify_block() and add your
+MIME type into @TYPES_TO_HANDLE (and @OTHER_TYPES_TO_REGISTER if needed).
+
+Additionally, a framework to proxify script content is in place:  All script
+content will be routed through the MIME type handler if $PROXIFY_SCRIPTS is
+set.  You need to add your own code to proxify_block() for this to actually
+do anything.
+
+Parsing of the flag segment of PATH_INFO has been encapsulated into the
+routines pack_flags() and unpack_flags().
+
+
+---- Invisible, or bug fixes: ----
+
+Style sheets are handled much better, including <style> elements, "style"
+attributes, and external style sheets.  CSS is explicitly handled, but the
+framework is in place for other types.
+
+Certain tags in HTML specify the expected MIME type of the resource they
+link to; this is now handled better.
+
+The list of script MIME types is now more complete.
+
+Cookies with the "secure" clause are now supported, though it's never
+actually used without SSL support.
+
+Strengthened $NO_COOKIE_WITH_IMAGE support by requiring an appropriate Accept:
+header, to guard against certain sneaky Web bugs like at zdnet.com.
+
+The script's URL is now generated using the Host: header if available,
+instead of SERVER_NAME; this tends to have better results.
+
+Any resource with an unidentified MIME type is now treated as text/html,
+like Netscape does.  This is safest.
+
+<a href> attributes containing character entities are now handled better when
+proxy_encode()'ing is used.
+
+FTP URLs with spaces in them are now handled better, in a couple of ways.
+
+Various tags, attributes, and HTTP headers that require special treatment
+are now handled more correctly.
+
+Various regex fixes, other minor bug fixes, and cleanup.
+
+
+
+1.4.1 and 1.4.1-SSL, released March 8, 2001:
+--------------------------------------------
+
+CPU load was decreased 15% with two simple changes that I should have thought
+of long ago.
+
+Fixed error with <meta> "refresh" tags that caused proxy to loop through
+itself.
+
+Fixed problem with user-chosen URL entry form.
+
+
+
+1.4-SSL, released February 22, 2001:
+------------------------------------
+
+This is a special version that can retrieve pages from SSL servers.  It
+is based on version 1.4, and otherwise works pretty identically to that
+release.
+
+
+
+1.4, released February 10, 2001:
+----------------------------------
+
+You can now optionally insert a compact version of the initial entry form
+into the top of every downloaded page, by setting $INSERT_ENTRY_FORM=1.  The
+form also displays the URL you're currently viewing.  This is selectable by
+the user like the three original user-selectable options.  Frames are handled
+correctly, i.e. it's not inserted in frames, because that would be really
+ugly.  That was the hard part.
+
+You can also insert your own block of HTML if desired: specify it either as a
+fixed string in $INSERT_HTML, or name a file to be inserted in $INSERT_FILE.
+
+For consistency, the URL format was changed slightly-- the initial flags in
+PATH_INFO are always there and are now five in number.  So any bookmarks
+saved through the proxy will have to be converted or recreated.  If there's
+enough demand, I can write a simple converter each time I change the URL
+format.
+
+The user-entered hostname is now always lowercased, since host names are
+case-insensitive.
+
+Fixed a minor bug in 1.3.2 having to do with PATH_INFO encoding.
+
+
+
+1.3.2, released February 3, 2001:
+---------------------------------
+
+By popular demand, you can now restrict which servers the proxy can access,
+like the online demo does.  This is configured with the lists
+@ALLOWED_SERVERS and @BANNED_SERVERS.
+
+For FTP transfers, a "Content-Length:" header is now returned when
+guessable.  This lets some browsers show you the percentage progress.
+
+Pseudo-headers created by <meta http-equiv> tags are now handled like real
+HTTP headers.  Internally, the handling of HTTP headers has been cleaned up.
+
+If you absolutely, truly, can't run NPH scripts on your server, there is
+now an option to run as best as possible as a normal non-NPH CGI script.
+For this to work, your server MUST support the "Status:" CGI response
+header.  All servers are supposed to support it, but not all do.
+
+There is now a $NO_BROWSE_THROUGH_SELF option which prevents the proxy from
+calling itself, which is usually a mistake anyway.
+
+Proxy authentication (the "Proxy-Authorization:" request header) is now
+supported in a limited way, with $PROXY_AUTH.
+
+Regexes have been improved to match tag attributes better, and a related
+privacy hole was fixed.
+
+URLs with spaces (which are a bad idea anyway) are now more likely to be
+handled as expected.
+
+
+
+1.3.1, released June 6, 2000:
+-----------------------------
+
+Script now runs correctly under mod_perl (requires at least Perl 5.004).
+
+Script now runs correctly on an SSL server, if $RUNNING_ON_SSL_SERVER is set.
+
+Main URL-conversion loop runs almost twice as fast (40% less CPU time), with
+a fix I should have noticed a long time ago.
+
+Login for HTTP Basic authentication is now submitted with POST instead of
+GET, for better security.
+
+Fixed privacy hole when servers didn't return Content-Type: header.
+
+
+
+1.3, released April 8, 2000:
+-----------------------------
+
+Anonymity has been improved, especially regarding JavaScript or other
+script content.  Before it was an afterthought; now it's being implemented
+as completely as possible.  If you know any anonymity holes, please tell
+me.  I'm especially interested in knowing any MIME types that identify
+scripts.
+
+In particular:
+
+. Much more JavaScript is filtered out than before.  As far as I know, all
+  of it is removed:  in <script> blocks, in style sheets, in HTML attributes,
+  wherever indicated by HTTP headers, and other places.
+
+. By default, $REMOVE_SCRIPTS is set to true.
+
+. A potential privacy hole from a bug in Internet Explorer is protected.
+
+You can now select which servers to allow scripts from, by setting
+@ALLOWED_SCRIPT_SERVERS and @BANNED_SCRIPT_SERVERS.
+
+
+If several people share a proxy, they can customize their own settings if
+you set $ALLOW_USER_CONFIG.
+
+Large files and streaming media are now supported, by transmitting the
+data from the server as it arrives, rather than receiving the whole
+resource before sending it to the client.  This works for both HTTP and
+FTP.
+
+HTTP Basic authentication is now supported.  (I sure hope people use it,
+because it's the most elaborate and convoluted hack of the whole program.)
+
+There's an experimental load-balancing feature.  If you set @PROXY_GROUP
+to a set of URL's of cooperating proxies, they'll randomly distribute the
+load among them.  This may help or hinder privacy, and it may have other
+uses too.  Let me know if you find those uses.
+
+For those who like to mess with the code, there are some neat new internal
+mechanisms.  Cookies have now been extended to handle multiple tasks (had
+to for Basic authentication), and there's a new internally-handled URL
+scheme "x-proxy" that lets you plug in whatever magic functionality you
+want (had to for Basic authentication).
+
+There is no longer a startproxy.cgi.  It was swallowed by the main script.
+It was becoming a vanishingly small percentage of the overall code.
+
+More HTML tags are transformed, whichever non-standard tags people
+reported to me (thanks!).
+
+A couple of non-standard HTTP headers with URLs are now transformed
+correctly.
+
+If you're running on Windows, you can now set a configuration flag, and
+CGIProxy will work around a couple problems on that platform.
+
+$SUPPORT_COOKIES has been reversed, and renamed to $REMOVE_COOKIES.  This
+makes it more analogous to $REMOVE_SCRIPTS, and each have their
+@ALLOWED...  and @BANNED... server lists.
+
+@BANNED_COOKIE_SERVERS and $NO_COOKIE_WITH_IMAGE have changed slightly--
+they now take effect even when $FILTER_ADS isn't set.  They're more
+associated with the $REMOVE_COOKIES flag now.
+
+The initial URL-entry form may now submit using POST instead of GET,
+based on the setting of $USE_POST_ON_START.  This is because some
+filters apparently search outgoing URIs, but not POST request bodies.
+
+FTP now follows symbolic links correctly, and another FTP bug or two were
+fixed.
+
+
+
+1.2, released September 11, 1999:
+---------------------------------
+
+The internal structure was rearranged in a big way, to support multiple
+protocols more cleanly.  Previously, HTTP was ingrained throughout; now
+it's more modular.
+
+FTP is now supported.
+
+@ALLOWED_COOKIE_SERVERS lets you only accept cookies from certain servers.
+
+@BANNED_COOKIE_SERVERS and @ALLOWED_COOKIE_SERVERS are now lists of Perl
+patterns (regular expressions) to match, rather than literal host names.
+This lets you allow or forbid whole sets of servers rather than listing
+each server individually.  For more information on Perl patterns, read the
+Perl documentation.  nph-proxy.cgi has a note in the user config section
+that may help enough.
+
+You can remove scripts from HTML pages by setting $REMOVE_SCRIPTS=1.  This
+helps with anonymity somewhat by removing some JavaScript (but not all!).
+It also removes most popup ads.  :)
+
+The HEAD method is now supported more cleanly.
+
+Rare net_path form of relative URL (i.e. like "//host.com/path/etc") is
+now supported, for completeness and safety.
+
+The default lists of cookie and ad servers are a bit better.
+
+
+
+1.1, released March 9, 1999:
+----------------------------
+
+The whole format of the target URL in PATH_INFO was restructured.  It can
+be encoded however the user wishes.  This gets around PATH_INFO clashes in
+various servers, solving most problems regarding server incompatibilities
+I've heard about.
+
+Cookies are now optionally supported (but off by default).
+
+Banner ads can be filtered out.  Only a simple set of URL patterns are
+filtered out by default, but it's easy to add more entries to
+@BANNED_IMAGE_URL_PATTERNS.
+
+Cookies from ad servers are filtered out (at least the main ones).  Again,
+the default list in @BANNED_COOKIE_SERVERS is simple, but you can easily
+add more.
+
+Binary files are no longer getting messed up on Windows.
+
+More HTTP headers are fixed to point back through the proxy.
+
+Under some conditions in 1.0, extra processes would hang around for hours
+and drag the system.  Alex Freed added a timeout to solve this for now.  I
+can't reproduce the problem, so any info is appreciated.  [9-9-1999: It
+may be a bug in older Apaches, fixed by upgrading to Apache 1.3.6 or
+better.  Julian Haight reports the same problem with other scripts on
+Apache 1.3.3, but not with Apache 1.3.6.]
+
+Internally: code was cleaned up, URL-parsing was improved, and relative
+URL calculation was redone.
+
+
+
+1.0, released August 3, 1998:
+-----------------------------
+
+Initial release.
+
+
+========================================================================
+
+Last Modified: June 11, 2016
+http://www.jmarshall.com/tools/cgiproxy/
+
